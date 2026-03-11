@@ -26,6 +26,12 @@ export default function LicitacionesPage() {
   const [rows, setRows] = useState<SecopRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [city, setCity] = useState("all");
+  const [priceOrder, setPriceOrder] = useState<"none" | "asc" | "desc">("none");
+
+  function toPriceNumber(v?: string) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
 
   const url = useMemo(() => {
     const params = new URLSearchParams();
@@ -46,9 +52,21 @@ export default function LicitacionesPage() {
   }, [rows]);
 
   const filteredRows = useMemo(() => {
-    if (city === "all") return rows;
-    return rows.filter((r) => (r.ciudad_entidad ?? "").trim() === city);
-  }, [rows, city]);
+    const list = city === "all"
+      ? rows
+      : rows.filter((r) => (r.ciudad_entidad ?? "").trim() === city);
+
+    if (priceOrder === "none") return list;
+
+    // copia para no mutar el estado original
+    const sorted = [...list].sort((a, b) => {
+      const pa = toPriceNumber(a.precio_base);
+      const pb = toPriceNumber(b.precio_base);
+      return priceOrder === "asc" ? pa - pb : pb - pa;
+    });
+
+    return sorted;
+  }, [rows, city, priceOrder]);
 
   async function load() {
     setLoading(true);
@@ -131,6 +149,21 @@ export default function LicitacionesPage() {
                       {c === "all" ? "Todas" : c}
                     </option>
                   ))}
+                </select>
+              </label>
+
+              <label className="form-control w-56">
+                <div className="label">
+                  <span className="label-text">Orden por precio</span>
+                </div>
+                <select
+                  className="select select-bordered"
+                  value={priceOrder}
+                  onChange={(e) => setPriceOrder(e.target.value as "none" | "asc" | "desc")}
+                >
+                  <option value="none">Sin orden</option>
+                  <option value="asc">Menor a mayor</option>
+                  <option value="desc">Mayor a menor</option>
                 </select>
               </label>
 
