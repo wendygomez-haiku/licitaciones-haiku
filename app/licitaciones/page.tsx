@@ -29,6 +29,16 @@ export default function LicitacionesPage() {
   const [error, setError] = useState<string | null>(null);
   const [city, setCity] = useState("all");
   const [priceOrder, setPriceOrder] = useState<"none" | "asc" | "desc">("none");
+  const [entity, setEntity] = useState("all");
+
+  const entities = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of rows) {
+      const e = (r.entidad ?? "").trim();
+      if (e) set.add(e);
+    }
+    return ["all", ...Array.from(set).sort((a, b) => a.localeCompare(b, "es"))];
+  }, [rows]);
 
   function normalizeChip(s: string) {
     return s.trim().replace(/\s+/g, " ");
@@ -78,13 +88,18 @@ export default function LicitacionesPage() {
   }, [rows]);
 
   const filteredRows = useMemo(() => {
-    const list = city === "all"
-      ? rows
-      : rows.filter((r) => (r.ciudad_entidad ?? "").trim() === city);
+    let list = rows;
+
+    if (city !== "all") {
+      list = list.filter((r) => (r.ciudad_entidad ?? "").trim() === city);
+    }
+
+    if (entity !== "all") {
+      list = list.filter((r) => (r.entidad ?? "").trim() === entity);
+    }
 
     if (priceOrder === "none") return list;
 
-    // copia para no mutar el estado original
     const sorted = [...list].sort((a, b) => {
       const pa = toPriceNumber(a.precio_base);
       const pb = toPriceNumber(b.precio_base);
@@ -92,7 +107,7 @@ export default function LicitacionesPage() {
     });
 
     return sorted;
-  }, [rows, city, priceOrder]);
+  }, [rows, city, entity, priceOrder]);
 
   async function load() {
     setLoading(true);
@@ -114,6 +129,11 @@ export default function LicitacionesPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days, scope, queryChips]);
+
+  useEffect(() => {
+    setCity("all");
+    setEntity("all");
+  }, [days, scope]);
 
   function formatCOP(value?: string) {
     const n = Number(value);
@@ -146,42 +166,7 @@ export default function LicitacionesPage() {
         <div className="card bg-base-100 shadow">
           <div className="card-body gap-4">
             <div className="flex flex-wrap gap-3 items-end">
-               <label className="form-control flex-1 min-w-[240px]">
-                <div className="label">
-                  <span className="label-text">Buscar (chips)</span>
-                </div>
-
-                <div className="join">
-                  <input
-                    className="input input-bordered join-item w-full"
-                    placeholder='Palabra clave'
-                    value={queryInput}
-                    onChange={(e) => setQueryInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addChip(queryInput);
-                      }
-                    }}
-                  />
-                  <button
-                    className="btn join-item rounded-full"
-                    onClick={() => addChip(queryInput)}
-                    disabled={loading}
-                    type="button"
-                  >
-                    <Plus size={15} />
-                  </button>
-                  <button
-                    className="btn join-item rounded-full"
-                    onClick={load}
-                    disabled={loading}
-                    type="button"
-                  >
-                    <Search size={15} />
-                  </button>
-                </div>
-              </label>
+               
               <label className="form-control w-40">
                 <div className="label">
                   <span className="label-text">Días</span>
@@ -209,6 +194,23 @@ export default function LicitacionesPage() {
                   {cities.map((c) => (
                     <option key={c} value={c}>
                       {c === "all" ? "Todas" : c}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="form-control w-80">
+                <div className="label">
+                  <span className="label-text">Entidad</span>
+                </div>
+                <select
+                  className="select select-bordered"
+                  value={entity}
+                  onChange={(e) => setEntity(e.target.value)}
+                >
+                  {entities.map((e) => (
+                    <option key={e} value={e}>
+                      {e === "all" ? "Todas" : e}
                     </option>
                   ))}
                 </select>
@@ -244,6 +246,42 @@ export default function LicitacionesPage() {
                   <option value="active">Activas (no cerradas)</option>
                   <option value="open">Abiertas (heurística)</option>
                 </select>
+              </label>
+
+              <label className="grid form-control flex-1 min-w-[240px]">
+                <div className="label">
+                  <span className="label-text">Buscar (chips)</span>
+                </div>
+                <div className="join">
+                  <input
+                    className="input input-bordered join-item w-full"
+                    placeholder='Palabra clave'
+                    value={queryInput}
+                    onChange={(e) => setQueryInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addChip(queryInput);
+                      }
+                    }}
+                  />
+                  <button
+                    className="btn join-item rounded-full"
+                    onClick={() => addChip(queryInput)}
+                    disabled={loading}
+                    type="button"
+                  >
+                    <Plus size={15} />
+                  </button>
+                  <button
+                    className="btn join-item rounded-full"
+                    onClick={load}
+                    disabled={loading}
+                    type="button"
+                  >
+                    <Search size={15} />
+                  </button>
+                </div>
               </label>
 
              
