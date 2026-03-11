@@ -153,7 +153,7 @@ export default function LicitacionesPage() {
 
   return (
     <main className="min-h-screen p-8 bg-base-200">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         <div className="navbar bg-base-100 rounded-box shadow">
           <div className="flex-1 px-2 text-xl font-bold">
             Licitaciones – SECOP II
@@ -167,7 +167,7 @@ export default function LicitacionesPage() {
           <div className="card-body gap-4">
             <div className="flex flex-wrap gap-3 items-end">
                
-              <label className="form-control w-40">
+              <label className="form-control w-20">
                 <div className="label">
                   <span className="label-text">Días</span>
                 </div>
