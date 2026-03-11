@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Search, Plus } from "lucide-react";
 
 type SecopRow = {
   fecha_de_publicacion_del?: string;
@@ -21,12 +22,32 @@ type SecopRow = {
 export default function LicitacionesPage() {
   const [days, setDays] = useState(7);
   const [scope, setScope] = useState<"active" | "open">("active");
-  const [q, setQ] = useState("");
+  const [queryInput, setQueryInput] = useState("");
+  const [queryChips, setQueryChips] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<SecopRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [city, setCity] = useState("all");
   const [priceOrder, setPriceOrder] = useState<"none" | "asc" | "desc">("none");
+
+  function normalizeChip(s: string) {
+    return s.trim().replace(/\s+/g, " ");
+  }
+
+  function addChip(raw: string) {
+    const chip = normalizeChip(raw);
+    if (!chip) return;
+
+    setQueryChips((prev) => {
+      const exists = prev.some((p) => p.toLowerCase() === chip.toLowerCase());
+      return exists ? prev : [...prev, chip];
+    });
+    setQueryInput("");
+  }
+
+  function removeChip(chip: string) {
+    setQueryChips((prev) => prev.filter((p) => p !== chip));
+  }
 
   function toPriceNumber(v?: string) {
     const n = Number(v);
@@ -37,10 +58,15 @@ export default function LicitacionesPage() {
     const params = new URLSearchParams();
     params.set("days", String(days));
     params.set("scope", scope);
-    if (q.trim()) params.set("q", q.trim());
     params.set("limit", "300");
+
+    // chips => q=...&q=...
+    for (const chip of queryChips) {
+      params.append("q", chip);
+    }
+
     return `/api/licitaciones?${params.toString()}`;
-  }, [days, scope, q]);
+  }, [days, scope, queryChips]);
 
   const cities = useMemo(() => {
     const set = new Set<string>();
@@ -87,7 +113,7 @@ export default function LicitacionesPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [days, scope]);
+  }, [days, scope, queryChips]);
 
   function formatCOP(value?: string) {
     const n = Number(value);
@@ -120,6 +146,42 @@ export default function LicitacionesPage() {
         <div className="card bg-base-100 shadow">
           <div className="card-body gap-4">
             <div className="flex flex-wrap gap-3 items-end">
+               <label className="form-control flex-1 min-w-[240px]">
+                <div className="label">
+                  <span className="label-text">Buscar (chips)</span>
+                </div>
+
+                <div className="join">
+                  <input
+                    className="input input-bordered join-item w-full"
+                    placeholder='Palabra clave'
+                    value={queryInput}
+                    onChange={(e) => setQueryInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addChip(queryInput);
+                      }
+                    }}
+                  />
+                  <button
+                    className="btn join-item rounded-full"
+                    onClick={() => addChip(queryInput)}
+                    disabled={loading}
+                    type="button"
+                  >
+                    <Plus size={15} />
+                  </button>
+                  <button
+                    className="btn join-item rounded-full"
+                    onClick={load}
+                    disabled={loading}
+                    type="button"
+                  >
+                    <Search size={15} />
+                  </button>
+                </div>
+              </label>
               <label className="form-control w-40">
                 <div className="label">
                   <span className="label-text">Días</span>
@@ -184,31 +246,39 @@ export default function LicitacionesPage() {
                 </select>
               </label>
 
-              <label className="form-control flex-1 min-w-[240px]">
-                <div className="label">
-                  <span className="label-text">Buscar (opcional)</span>
-                </div>
-                <div className="join">
-                  <input
-                    className="input input-bordered join-item w-full"
-                    placeholder='Ej: "publicidad", "pauta", "redes sociales"...'
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                  />
-                  <button
-                    className="btn join-item"
-                    onClick={load}
-                    disabled={loading}
-                  >
-                    Buscar
-                  </button>
-                </div>
-              </label>
+             
             </div>
 
             {error && (
               <div className="alert alert-error">
                 <span>{error}</span>
+              </div>
+            )}
+
+            {/* Chips */}
+            {queryChips.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {queryChips.map((chip) => (
+                  <div key={chip} className="badge badge-outline gap-2 py-3">
+                    <span>{chip}</span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs"
+                      onClick={() => removeChip(chip)}
+                      aria-label={`Eliminar ${chip}`}
+                      title="Eliminar"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  onClick={() => setQueryChips([])}
+                >
+                  Limpiar
+                </button>
               </div>
             )}
 
