@@ -12,74 +12,118 @@ type Props = {
   className?: string
 }
 
+function arcPath(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    cx: number,
+    cy: number
+) {
+    const k = 0.35
+    const c1x = x1 + (cx - x1) * k
+    const c1y = y1 + (cy - y1) * k
+    const c2x = x2 + (cx - x2) * k
+    const c2y = y2 + (cy - y2) * k
+    return `M ${x1} ${y1} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${x2} ${y2}`
+}
+
 export default function RadialNavigation({
-  size = 720,
-  radius = 260,
-  centerLabel = "haikú",
-  className,
+    size = 720,
+    radius = 260,
+    centerLabel = "haikú",
+    className,
 }: Props) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const reduceMotion = useReducedMotion()
+    const pathname = usePathname()
+    const router = useRouter()
+    const reduceMotion = useReducedMotion()
 
-  const [tilt, setTilt] = React.useState({ rx: 0, ry: 0 })
+    const [tilt, setTilt] = React.useState({ rx: 0, ry: 0 })
 
-  const activeSlug = React.useMemo(() => {
-    const match = pathname?.match(/\/scene\/([^/]+)/)
-    return match?.[1] ?? null
-  }, [pathname])
+    const activeSlug = React.useMemo(() => {
+        const match = pathname?.match(/\/scene\/([^/]+)/)
+        return match?.[1] ?? null
+    }, [pathname])
 
-  const total = haikuNodes.length
-  const c = size / 2
+    const total = haikuNodes.length
+    const c = size / 2
 
-  const [hoveredSlug, setHoveredSlug] = React.useState<string | null>(null)
-  const focusedSlug = hoveredSlug ?? activeSlug
+    const [hoveredSlug, setHoveredSlug] = React.useState<string | null>(null)
+    const focusedSlug = hoveredSlug ?? activeSlug
 
-  const nodesWithXY = React.useMemo(() => {
-    return haikuNodes.map((node, i) => {
-      const angle = (i / total) * Math.PI * 2 - Math.PI / 2
-      const x = c + radius * Math.cos(angle)
-      const y = c + radius * Math.sin(angle)
-      return { ...node, x, y, angle }
-    })
-  }, [c, radius, total])
+    const nodesWithXY = React.useMemo(() => {
+        return haikuNodes.map((node, i) => {
+        const angle = (i / total) * Math.PI * 2 - Math.PI / 2
+        const x = c + radius * Math.cos(angle)
+        const y = c + radius * Math.sin(angle)
+        return { ...node, x, y, angle }
+        })
+    }, [c, radius, total])
 
-  const focusedNode = React.useMemo(() => {
-    if (!focusedSlug) return null
-    return nodesWithXY.find((n) => n.slug === focusedSlug) ?? null
-  }, [focusedSlug, nodesWithXY])
+    const effectiveActiveSlug = activeSlug ?? "listen"
 
-  const ringStroke = "rgba(0,0,0,0.12)"
-  const spokeStroke = "rgba(0,0,0,0.10)"
-  const softStroke = "rgba(0,0,0,0.18)"
+    const arcFromSlug = hoveredSlug ?? effectiveActiveSlug
 
-  function onMove(e: React.MouseEvent<HTMLDivElement>) {
-    if (reduceMotion) return
+    const arcIndex = React.useMemo(() => {
+        return haikuNodes.findIndex((n) => n.slug === arcFromSlug)
+    }, [arcFromSlug])
 
-    const rect = e.currentTarget.getBoundingClientRect()
-    const px = (e.clientX - rect.left) / rect.width - 0.5
-    const py = (e.clientY - rect.top) / rect.height - 0.5
+    const activeIndex = React.useMemo(() => {
+        if (!effectiveActiveSlug) return -1
+        return haikuNodes.findIndex((n) => n.slug === effectiveActiveSlug)
+    }, [effectiveActiveSlug])
 
-    setTilt({
-      rx: -py * 8,
-      ry: px * 10,
-    })
-  }
+    const nextSlug = React.useMemo(() => {
+        if (arcIndex < 0) return null
+        return haikuNodes[(arcIndex + 1) % haikuNodes.length].slug
+    }, [arcIndex])
 
-  function onLeave() {
-    if (reduceMotion) return
-    setTilt({ rx: 0, ry: 0 })
-  }
+    const activeNode = React.useMemo(() => {
+        return nodesWithXY.find((n) => n.slug === arcFromSlug) ?? null
+    }, [arcFromSlug, nodesWithXY])
 
-  function goTo(slug: string) {
-    router.push(`/scene/${slug}`)
-  }
+    const nextNode = React.useMemo(() => {
+        if (!nextSlug) return null
+        return nodesWithXY.find((n) => n.slug === nextSlug) ?? null
+    }, [nextSlug, nodesWithXY])
+
+    const focusedNode = React.useMemo(() => {
+        const slug = focusedSlug ?? effectiveActiveSlug
+        if (!slug) return null
+        return nodesWithXY.find((n) => n.slug === slug) ?? null
+    }, [focusedSlug, effectiveActiveSlug, nodesWithXY])
+
+    const ringStroke = "rgba(0,0,0,0.12)"
+    const spokeStroke = "rgba(0,0,0,0.10)"
+    const softStroke = "rgba(0,0,0,0.18)"
+
+    function onMove(e: React.MouseEvent<HTMLDivElement>) {
+        if (reduceMotion) return
+
+        const rect = e.currentTarget.getBoundingClientRect()
+        const px = (e.clientX - rect.left) / rect.width - 0.5
+        const py = (e.clientY - rect.top) / rect.height - 0.5
+
+        setTilt({
+        rx: -py * 8,
+        ry: px * 10,
+        })
+    }
+
+    function onLeave() {
+        if (reduceMotion) return
+        setTilt({ rx: 0, ry: 0 })
+    }
+
+    function goTo(slug: string) {
+        router.push(`/scene/${slug}`)
+    }
 
   return (
     <div className={className}>
       <div className="relative mx-auto w-full max-w-[900px]">
         {/* Tooltip / microcopy */}
-        <div className="pointer-events-none absolute left-1/2 top-1/2 w-[min(520px,90vw)] -translate-x-1/2 -translate-y-1/2 text-center">
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-50 w-[min(520px,90vw)] -translate-x-1/2 -translate-y-1/2 text-center">
           <motion.div
             initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 8 }}
             animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
@@ -102,8 +146,16 @@ export default function RadialNavigation({
         <motion.div
           onMouseMove={onMove}
           onMouseLeave={onLeave}
-          animate={reduceMotion ? { rotateX: 0, rotateY: 0 } : { rotateX: tilt.rx, rotateY: tilt.ry }}
-          transition={{ type: "spring", stiffness: 120, damping: 18 }}
+          animate={{
+                rotateX: reduceMotion ? 0 : tilt.rx,
+                rotateY: reduceMotion ? 0 : tilt.ry,
+                rotateZ: reduceMotion ? 0 : 360, // base
+            }}
+            transition={{
+                rotateZ: { duration: 60, ease: "linear", repeat: Infinity },
+                rotateX: { type: "spring", stiffness: 120, damping: 18 },
+                rotateY: { type: "spring", stiffness: 120, damping: 18 },
+            }}
           style={{
             perspective: 1200,
             transformStyle: "preserve-3d",
@@ -138,6 +190,28 @@ export default function RadialNavigation({
                 strokeWidth={1}
               />
             ))}
+
+            {activeNode && nextNode && (
+                <>
+                    <motion.path
+                    d={arcPath(activeNode.x, activeNode.y, nextNode.x, nextNode.y, c, c)}
+                    fill="none"
+                    stroke="rgba(255,255,255,0.55)"
+                    strokeWidth={2.5}
+                    strokeLinecap="round"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 1 }}
+                    transition={{ duration: 0.9, ease: "easeOut" }}
+                    />
+                        <circle cx={activeNode.x} cy={activeNode.y} r={4} fill="rgba(255,255,255,0.9)">
+                            <animateMotion
+                                dur="1.8s"
+                                repeatCount="indefinite"
+                                path={arcPath(activeNode.x, activeNode.y, nextNode.x, nextNode.y, c, c)}
+                            />
+                        </circle>
+                </>
+            )}
 
             {/* Center */}
             <motion.g
@@ -186,7 +260,7 @@ export default function RadialNavigation({
                     duration: reduceMotion ? 0 : 0.55,
                     delay: reduceMotion ? 0 : i * 0.06,
                     ease: "easeOut",
-                  }}
+                    }}
                   onMouseEnter={() => setHoveredSlug(n.slug)}
                   onMouseLeave={() => setHoveredSlug(null)}
                 >

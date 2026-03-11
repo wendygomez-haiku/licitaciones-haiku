@@ -1,19 +1,18 @@
-"use client"
+"use client";
 
-import { haikuNodes } from "@/lib/nodes"
-import { motion } from "framer-motion"
-import Link from "next/link"
+import { haikuNodes } from "@/lib/nodes";
+import { motion } from "framer-motion";
+import Link from "next/link";
 
-const radius = 220
-const center = 300
+const radius = 220;
+const center = 300;
 
 export default function CircularNavigation() {
-  const total = haikuNodes.length
+  const total = haikuNodes.length;
 
   return (
     <div className="flex items-center justify-center h-screen">
       <svg width={600} height={600} className="overflow-visible">
-
         {/* center logo */}
         <circle cx={center} cy={center} r={40} className="fill-primary" />
         <text
@@ -27,10 +26,10 @@ export default function CircularNavigation() {
         </text>
 
         {haikuNodes.map((node, index) => {
-          const angle = (index / total) * Math.PI * 2
+          const angle = (index / total) * Math.PI * 2;
 
-          const x = center + radius * Math.cos(angle)
-          const y = center + radius * Math.sin(angle)
+          const x = center + radius * Math.cos(angle);
+          const y = center + radius * Math.sin(angle);
 
           return (
             <motion.g
@@ -58,9 +57,9 @@ export default function CircularNavigation() {
                 </text>
               </Link>
             </motion.g>
-          )
+          );
         })}
       </svg>
     </div>
-  )
+  );
 }

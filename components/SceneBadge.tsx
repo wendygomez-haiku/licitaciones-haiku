@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { motion } from "framer-motion"
+import { motion } from "framer-motion";
 
 export default function SceneBadge({
   slug,
   title,
 }: {
-  slug: string
-  title: string
+  slug: string;
+  title: string;
 }) {
   return (
     <motion.div
@@ -19,5 +19,5 @@ export default function SceneBadge({
       </span>
       <span className="text-sm font-semibold">{title}</span>
     </motion.div>
-  )
+  );
 }

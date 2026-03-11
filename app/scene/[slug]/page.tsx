@@ -1,22 +1,20 @@
-// app/scene/[slug]/page.tsx
-import Link from "next/link"
-import { notFound } from "next/navigation"
-import { haikuNodes } from "@/lib/nodes"
-import SceneBadge from "@/components/SceneBadge"
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { haikuNodes } from "@/lib/nodes";
+import SceneBadge from "@/components/SceneBadge";
+import SceneBody from "@/components/SceneBody"; // ✅ aquí
 
-type PageProps = {
-  params: Promise<{ slug: string }>
-}
+type PageProps = { params: Promise<{ slug: string }> };
 
 export default async function ScenePage({ params }: PageProps) {
-  const { slug } = await params
+  const { slug } = await params;
 
-  const node = haikuNodes.find((n) => n.slug === slug)
-  if (!node) return notFound()
+  const node = haikuNodes.find((n) => n.slug === slug);
+  if (!node) return notFound();
 
-  const index = haikuNodes.findIndex((n) => n.slug === slug)
-  const prev = haikuNodes[(index - 1 + haikuNodes.length) % haikuNodes.length]
-  const next = haikuNodes[(index + 1) % haikuNodes.length]
+  const index = haikuNodes.findIndex((n) => n.slug === slug);
+  const prev = haikuNodes[(index - 1 + haikuNodes.length) % haikuNodes.length];
+  const next = haikuNodes[(index + 1) % haikuNodes.length];
 
   return (
     <main className="min-h-screen bg-base-200">
@@ -25,7 +23,6 @@ export default async function ScenePage({ params }: PageProps) {
           <Link href="/" className="btn btn-ghost btn-sm">
             ← Back to system
           </Link>
-
           <div className="text-xs opacity-70">
             Scene {index + 1} / {haikuNodes.length}
           </div>
@@ -33,9 +30,8 @@ export default async function ScenePage({ params }: PageProps) {
 
         <SceneBadge slug={slug} title={node.title} />
 
-        <p className="mt-4 text-base leading-relaxed opacity-80">
-          {node.description}
-        </p>
+        {/* ✅ aquí va SceneBody */}
+        <SceneBody description={node.description} />
 
         <div className="mt-12 flex flex-wrap gap-3">
           <Link href={`/scene/${prev.slug}`} className="btn btn-outline btn-sm">
@@ -47,5 +43,5 @@ export default async function ScenePage({ params }: PageProps) {
         </div>
       </section>
     </main>
-  )
+  );
 }

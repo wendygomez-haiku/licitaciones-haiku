@@ -1,4 +1,4 @@
-import RadialNavigation from "@/components/RadialNavigation"
+import RadialNavigation from "@/components/RadialNavigation";
 
 export default function Home() {
   return (

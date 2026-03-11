@@ -1,6 +1,10 @@
-"use client"
-import { LayoutGroup } from "framer-motion"
+"use client";
+import { LayoutGroup } from "framer-motion";
 
-export default function MotionProvider({ children }: { children: React.ReactNode }) {
-  return <LayoutGroup>{children}</LayoutGroup>
+export default function MotionProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <LayoutGroup>{children}</LayoutGroup>;
 }
