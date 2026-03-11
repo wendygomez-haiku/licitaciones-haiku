@@ -80,8 +80,8 @@ export async function GET(req: Request) {
     );
 
     // Si pasas q=algo, buscamos solo eso; si no, usamos el bucket
-    const q = (searchParams.get("q") ?? "").trim();
-    const keywords = q ? [q] : [...DEFAULT_BUCKET];
+    const qs = searchParams.getAll("q").map((s) => s.trim()).filter(Boolean);
+    const keywords = qs.length > 0 ? qs : [...DEFAULT_BUCKET];
 
     const startIso = startIsoFromDays(days);
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Search, Plus } from "lucide-react";
 
 type SecopRow = {
   fecha_de_publicacion_del?: string;
@@ -21,20 +22,61 @@ type SecopRow = {
 export default function LicitacionesPage() {
   const [days, setDays] = useState(7);
   const [scope, setScope] = useState<"active" | "open">("active");
-  const [q, setQ] = useState("");
+  const [queryInput, setQueryInput] = useState("");
+  const [queryChips, setQueryChips] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<SecopRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [city, setCity] = useState("all");
+  const [priceOrder, setPriceOrder] = useState<"none" | "asc" | "desc">("none");
+  const [entity, setEntity] = useState("all");
+
+  const entities = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of rows) {
+      const e = (r.entidad ?? "").trim();
+      if (e) set.add(e);
+    }
+    return ["all", ...Array.from(set).sort((a, b) => a.localeCompare(b, "es"))];
+  }, [rows]);
+
+  function normalizeChip(s: string) {
+    return s.trim().replace(/\s+/g, " ");
+  }
+
+  function addChip(raw: string) {
+    const chip = normalizeChip(raw);
+    if (!chip) return;
+
+    setQueryChips((prev) => {
+      const exists = prev.some((p) => p.toLowerCase() === chip.toLowerCase());
+      return exists ? prev : [...prev, chip];
+    });
+    setQueryInput("");
+  }
+
+  function removeChip(chip: string) {
+    setQueryChips((prev) => prev.filter((p) => p !== chip));
+  }
+
+  function toPriceNumber(v?: string) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
 
   const url = useMemo(() => {
     const params = new URLSearchParams();
     params.set("days", String(days));
     params.set("scope", scope);
-    if (q.trim()) params.set("q", q.trim());
     params.set("limit", "300");
+
+    // chips => q=...&q=...
+    for (const chip of queryChips) {
+      params.append("q", chip);
+    }
+
     return `/api/licitaciones?${params.toString()}`;
-  }, [days, scope, q]);
+  }, [days, scope, queryChips]);
 
   const cities = useMemo(() => {
     const set = new Set<string>();
@@ -46,9 +88,26 @@ export default function LicitacionesPage() {
   }, [rows]);
 
   const filteredRows = useMemo(() => {
-    if (city === "all") return rows;
-    return rows.filter((r) => (r.ciudad_entidad ?? "").trim() === city);
-  }, [rows, city]);
+    let list = rows;
+
+    if (city !== "all") {
+      list = list.filter((r) => (r.ciudad_entidad ?? "").trim() === city);
+    }
+
+    if (entity !== "all") {
+      list = list.filter((r) => (r.entidad ?? "").trim() === entity);
+    }
+
+    if (priceOrder === "none") return list;
+
+    const sorted = [...list].sort((a, b) => {
+      const pa = toPriceNumber(a.precio_base);
+      const pb = toPriceNumber(b.precio_base);
+      return priceOrder === "asc" ? pa - pb : pb - pa;
+    });
+
+    return sorted;
+  }, [rows, city, entity, priceOrder]);
 
   async function load() {
     setLoading(true);
@@ -69,6 +128,11 @@ export default function LicitacionesPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [days, scope, queryChips]);
+
+  useEffect(() => {
+    setCity("all");
+    setEntity("all");
   }, [days, scope]);
 
   function formatCOP(value?: string) {
@@ -89,7 +153,7 @@ export default function LicitacionesPage() {
 
   return (
     <main className="min-h-screen p-8 bg-base-200">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         <div className="navbar bg-base-100 rounded-box shadow">
           <div className="flex-1 px-2 text-xl font-bold">
             Licitaciones – SECOP II
@@ -102,7 +166,8 @@ export default function LicitacionesPage() {
         <div className="card bg-base-100 shadow">
           <div className="card-body gap-4">
             <div className="flex flex-wrap gap-3 items-end">
-              <label className="form-control w-40">
+               
+              <label className="form-control w-20">
                 <div className="label">
                   <span className="label-text">Días</span>
                 </div>
@@ -134,6 +199,38 @@ export default function LicitacionesPage() {
                 </select>
               </label>
 
+              <label className="form-control w-80">
+                <div className="label">
+                  <span className="label-text">Entidad</span>
+                </div>
+                <select
+                  className="select select-bordered"
+                  value={entity}
+                  onChange={(e) => setEntity(e.target.value)}
+                >
+                  {entities.map((e) => (
+                    <option key={e} value={e}>
+                      {e === "all" ? "Todas" : e}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="form-control w-56">
+                <div className="label">
+                  <span className="label-text">Orden por precio</span>
+                </div>
+                <select
+                  className="select select-bordered"
+                  value={priceOrder}
+                  onChange={(e) => setPriceOrder(e.target.value as "none" | "asc" | "desc")}
+                >
+                  <option value="none">Sin orden</option>
+                  <option value="asc">Menor a mayor</option>
+                  <option value="desc">Mayor a menor</option>
+                </select>
+              </label>
+
               <label className="form-control w-48">
                 <div className="label">
                   <span className="label-text">Scope</span>
@@ -151,31 +248,75 @@ export default function LicitacionesPage() {
                 </select>
               </label>
 
-              <label className="form-control flex-1 min-w-[240px]">
+              <label className="grid form-control flex-1 min-w-[240px]">
                 <div className="label">
-                  <span className="label-text">Buscar (opcional)</span>
+                  <span className="label-text">Buscar (chips)</span>
                 </div>
                 <div className="join">
                   <input
                     className="input input-bordered join-item w-full"
-                    placeholder='Ej: "publicidad", "pauta", "redes sociales"...'
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
+                    placeholder='Palabra clave'
+                    value={queryInput}
+                    onChange={(e) => setQueryInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addChip(queryInput);
+                      }
+                    }}
                   />
                   <button
-                    className="btn join-item"
+                    className="btn join-item rounded-full"
+                    onClick={() => addChip(queryInput)}
+                    disabled={loading}
+                    type="button"
+                  >
+                    <Plus size={15} />
+                  </button>
+                  <button
+                    className="btn join-item rounded-full"
                     onClick={load}
                     disabled={loading}
+                    type="button"
                   >
-                    Buscar
+                    <Search size={15} />
                   </button>
                 </div>
               </label>
+
+             
             </div>
 
             {error && (
               <div className="alert alert-error">
                 <span>{error}</span>
+              </div>
+            )}
+
+            {/* Chips */}
+            {queryChips.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {queryChips.map((chip) => (
+                  <div key={chip} className="badge badge-outline gap-2 py-3">
+                    <span>{chip}</span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs"
+                      onClick={() => removeChip(chip)}
+                      aria-label={`Eliminar ${chip}`}
+                      title="Eliminar"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  onClick={() => setQueryChips([])}
+                >
+                  Limpiar
+                </button>
               </div>
             )}
 
